@@ -6,7 +6,6 @@ import (
 
 type Task struct {
 	gorm.Model
-	Id     int
 	Title  string
 	Status string
 }
