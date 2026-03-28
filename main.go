@@ -17,7 +17,7 @@ func main() {
 		c.String(http.StatusOK, "Hello, World!")
 	})
 	
-	db, err := gorm.Open(sqlite.Open("gorm.db"), &gorm.Config{})
+	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
 	if err != nil {
 		fmt.Println("failed to connect database:", err)
 		return
