@@ -20,7 +20,7 @@ func NewTask(title string, status string) *Task {
 		Status: status,
 	}
 }
-
+//挿入
 func (r *TaskRepository) Create(task *Task) error {
 	return r.db.Create(task).Error
 }
