@@ -5,7 +5,8 @@ import (
 	"net/http"
 
 	// "practice_go/handler"
-	"practice_go/task"
+	handler "todo-api/handler"
+	task "todo-api/repository"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/sqlite" // Sqlite driver based on CGO
@@ -23,6 +24,11 @@ func main() {
 		return
 	}
 	db.AutoMigrate(&task.Task{})
+
+	taskRepo := task.NewTaskRepository(db)
+	h := handler.NewHandler(taskRepo)
+
+	r.POST("/tasks", h.CreateTask)
 
 	r.Run(":8080")
 
