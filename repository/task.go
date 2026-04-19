@@ -5,10 +5,11 @@ import (
 )
 
 type Task struct {
-	ID     int
-	Title  string
-	Status string
-}
+	type tmp struct {
+		ID     int    `json:"-"`
+		Title  string `json:"title" binding:"required"`
+		Status string `json:"status" binding:"required"`
+	}
 type TaskRepository struct {
 	db *gorm.DB
 }
