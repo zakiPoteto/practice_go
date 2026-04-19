@@ -5,7 +5,7 @@ import (
 )
 
 type Task struct {
-	gorm.Model
+	ID     int
 	Title  string
 	Status string
 }
@@ -15,6 +15,7 @@ type TaskRepository struct {
 
 func NewTask(title string, status string) *Task {
 	return &Task{
+
 		Title:  title,
 		Status: status,
 	}
@@ -32,5 +33,10 @@ func NewTaskRepository(db *gorm.DB) *TaskRepository {
 func (r *TaskRepository) GetAll() ([]Task, error) {
 	var tasks []Task
 	err := r.db.Find(&tasks).Error
+	return tasks, err
+}
+func (r *TaskRepository) GetTasksById(id int) (Task, error) {
+	var tasks Task
+	err := r.db.First(&tasks, "id = ?", id).Error
 	return tasks, err
 }

@@ -1,17 +1,20 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
+	"strconv"
 	task "todo-api/repository"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
-type tmp struct {
-	ID     int    `json:"-"`
-	Title  string `json:"title" binding:"required"`
-	Status string `json:"status" binding:"required"`
-}
+//	type tmp struct {
+//		ID     int    `json:"-"`
+//		Title  string `json:"title" binding:"required"`
+//		Status string `json:"status" binding:"required"`
+//	}
 type Handler struct {
 	taskRepo *task.TaskRepository
 }
@@ -44,4 +47,22 @@ func (h *Handler) GetAllTasks(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, tasks)
+}
+func (h *Handler) GetTasksById(c *gin.Context) {
+	id := c.Param("id")
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format"})
+		return
+	}
+	foundTask, err := h.taskRepo.GetTasksById(idInt)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "task not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, foundTask)
 }

@@ -31,6 +31,7 @@ func main() {
 
 	r.POST("/tasks", h.CreateTask)
 	r.GET("/tasks", h.GetAllTasks)
+	r.GET("/tasks/:id", h.GetTasksById)
 
 	r.Run(":8080")
 
