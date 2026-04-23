@@ -44,3 +44,6 @@ func (r *TaskRepository) GetTasksById(id int) (Task, error) {
 func (r *TaskRepository) DeleteAll() error {
 	return r.db.Exec("DELETE FROM tasks").Error
 }
+func (r *TaskRepository) DeleteById(id int) error {
+	return r.db.Delete(&Task{}, id).Error
+}

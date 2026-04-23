@@ -73,3 +73,20 @@ func (h *Handler) DeleteAllTasks(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "all tasks deleted"})
 }
+func (h *Handler) DeleteTaskById(c *gin.Context) {
+	id := c.Param("id")
+	idInt, err := strconv.Atoi(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format"})
+		return
+	}
+	if err := h.taskRepo.DeleteById(idInt); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "task not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "task deleted"})
+}
