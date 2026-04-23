@@ -66,3 +66,10 @@ func (h *Handler) GetTasksById(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, foundTask)
 }
+func (h *Handler) DeleteAllTasks(c *gin.Context) {
+	if err := h.taskRepo.DeleteAll(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "all tasks deleted"})
+}
