@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	testdata "todo-api/test"
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -29,7 +30,8 @@ func setupTestRepo(t *testing.T) *TaskRepository {
 func TestTaskRepositoryCreateAndGetAll(t *testing.T) {
 	repo := setupTestRepo(t)
 
-	created := NewTask("buy milk", "todo")
+	input := testdata.DefaultTaskInputs[0]
+	created := NewTask(input.Title, input.Status)
 	if err := repo.Create(created); err != nil {
 		t.Fatalf("タスク作成に失敗しました: %v", err)
 	}
@@ -43,19 +45,20 @@ func TestTaskRepositoryCreateAndGetAll(t *testing.T) {
 		t.Fatalf("件数が不正です: 期待=1 実際=%d", len(tasks))
 	}
 
-	if tasks[0].Title != "buy milk" {
-		t.Fatalf("titleが不正です: 期待=buy milk 実際=%s", tasks[0].Title)
+	if tasks[0].Title != input.Title {
+		t.Fatalf("titleが不正です: 期待=%s 実際=%s", input.Title, tasks[0].Title)
 	}
 
-	if tasks[0].Status != "todo" {
-		t.Fatalf("statusが不正です: 期待=todo 実際=%s", tasks[0].Status)
+	if tasks[0].Status != input.Status {
+		t.Fatalf("statusが不正です: 期待=%s 実際=%s", input.Status, tasks[0].Status)
 	}
 }
 
 func TestTaskRepositoryGetTasksById(t *testing.T) {
 	repo := setupTestRepo(t)
 
-	created := NewTask("read book", "done")
+	input := testdata.DefaultTaskInputs[4]
+	created := NewTask(input.Title, input.Status)
 	if err := repo.Create(created); err != nil {
 		t.Fatalf("タスク作成に失敗しました: %v", err)
 	}
@@ -65,12 +68,12 @@ func TestTaskRepositoryGetTasksById(t *testing.T) {
 		t.Fatalf("ID指定のタスク取得に失敗しました: %v", err)
 	}
 
-	if got.Title != "read book" {
-		t.Fatalf("titleが不正です: 期待=read book 実際=%s", got.Title)
+	if got.Title != input.Title {
+		t.Fatalf("titleが不正です: 期待=%s 実際=%s", input.Title, got.Title)
 	}
 
-	if got.Status != "done" {
-		t.Fatalf("statusが不正です: 期待=done 実際=%s", got.Status)
+	if got.Status != input.Status {
+		t.Fatalf("statusが不正です: 期待=%s 実際=%s", input.Status, got.Status)
 	}
 }
 
@@ -78,6 +81,34 @@ func TestTaskRepositoryGetTasksById_NotFound(t *testing.T) {
 	repo := setupTestRepo(t)
 
 	_, err := repo.GetTasksById(999)
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("想定外のエラーです: 期待=ErrRecordNotFound 実際=%v", err)
+	}
+}
+
+func TestTaskRepositoryDeleteById_Success(t *testing.T) {
+	repo := setupTestRepo(t)
+
+	input := testdata.DefaultTaskInputs[2]
+	created := NewTask(input.Title, input.Status)
+	if err := repo.Create(created); err != nil {
+		t.Fatalf("タスク作成に失敗しました: %v", err)
+	}
+
+	if err := repo.DeleteById(created.ID); err != nil {
+		t.Fatalf("タスク削除に失敗しました: %v", err)
+	}
+
+	_, err := repo.GetTasksById(created.ID)
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		t.Fatalf("削除後にタスクが残っています: 実際のエラー=%v", err)
+	}
+}
+
+func TestTaskRepositoryDeleteById_NotFound(t *testing.T) {
+	repo := setupTestRepo(t)
+
+	err := repo.DeleteById(999)
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		t.Fatalf("想定外のエラーです: 期待=ErrRecordNotFound 実際=%v", err)
 	}

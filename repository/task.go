@@ -45,5 +45,12 @@ func (r *TaskRepository) DeleteAll() error {
 	return r.db.Exec("DELETE FROM tasks").Error
 }
 func (r *TaskRepository) DeleteById(id int) error {
-	return r.db.Delete(&Task{}, id).Error
+	result := r.db.Delete(&Task{}, id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }

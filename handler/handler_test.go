@@ -1,14 +1,15 @@
 package handler
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
-	"strings"
 	"testing"
 	task "todo-api/repository"
+	testdata "todo-api/test"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/sqlite"
@@ -45,6 +46,8 @@ func setupTestRouter(t *testing.T) *gin.Engine {
 	r.POST("/tasks", h.CreateTask)
 	r.GET("/tasks", h.GetAllTasks)
 	r.GET("/tasks/:id", h.GetTasksById)
+	r.DELETE("/tasks", h.DeleteAllTasks)
+	r.DELETE("/tasks/:id", h.DeleteTaskById)
 
 	return r
 }
@@ -52,9 +55,13 @@ func setupTestRouter(t *testing.T) *gin.Engine {
 func TestCreateTask_Success(t *testing.T) {
 	r := setupTestRouter(t)
 
-	// Arrange: 正常なリクエストボディ
-	body := `{"title":"write tests","status":"todo"}`
-	req := httptest.NewRequest(http.MethodPost, "/tasks", strings.NewReader(body))
+	input := testdata.TaskInput{Title: "write tests", Status: "todo"}
+	body, err := testdata.TaskJSONBody(input)
+	if err != nil {
+		t.Fatalf("リクエストJSONの生成に失敗しました: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/tasks", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
@@ -69,20 +76,25 @@ func TestCreateTask_Success(t *testing.T) {
 		t.Fatalf("レスポンスJSONの解析に失敗しました: %v", err)
 	}
 
-	if got["title"] != "write tests" {
-		t.Fatalf("titleが不正です: 期待=write tests 実際=%s", got["title"])
+	if got["title"] != input.Title {
+		t.Fatalf("titleが不正です: 期待=%s 実際=%s", input.Title, got["title"])
 	}
 
-	if got["status"] != "todo" {
-		t.Fatalf("statusが不正です: 期待=todo 実際=%s", got["status"])
+	if got["status"] != input.Status {
+		t.Fatalf("statusが不正です: 期待=%s 実際=%s", input.Status, got["status"])
 	}
 }
 
 func TestCreateTask_BadRequest(t *testing.T) {
 	r := setupTestRouter(t)
 
-	body := `{"title":"missing status"}`
-	req := httptest.NewRequest(http.MethodPost, "/tasks", strings.NewReader(body))
+	input := testdata.TaskInput{Title: "missing status"}
+	body, err := testdata.TaskJSONBody(input)
+	if err != nil {
+		t.Fatalf("リクエストJSONの生成に失敗しました: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, "/tasks", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 
 	w := httptest.NewRecorder()
@@ -99,12 +111,11 @@ func TestGetAllTasks_Success(t *testing.T) {
 	repo := task.NewTaskRepository(db)
 	h := NewHandler(repo)
 
-	// 取得APIの検証用に事前データを投入する。
-	if err := repo.Create(task.NewTask("a", "todo")); err != nil {
-		t.Fatalf("テストデータ投入に失敗しました: %v", err)
-	}
-	if err := repo.Create(task.NewTask("b", "done")); err != nil {
-		t.Fatalf("テストデータ投入に失敗しました: %v", err)
+	// 取得APIの検証用に共通モックデータを投入する。
+	for _, input := range testdata.DefaultTaskInputs[:2] {
+		if err := repo.Create(task.NewTask(input.Title, input.Status)); err != nil {
+			t.Fatalf("テストデータ投入に失敗しました: %v", err)
+		}
 	}
 
 	r := gin.Default()
@@ -125,6 +136,14 @@ func TestGetAllTasks_Success(t *testing.T) {
 
 	if len(got) != 2 {
 		t.Fatalf("取得件数が不正です: 期待=2 実際=%d", len(got))
+	}
+
+	if got[0]["title"] != testdata.DefaultTaskInputs[0].Title {
+		t.Fatalf("1件目titleが不正です: 期待=%s 実際=%s", testdata.DefaultTaskInputs[0].Title, got[0]["title"])
+	}
+
+	if got[1]["title"] != testdata.DefaultTaskInputs[1].Title {
+		t.Fatalf("2件目titleが不正です: 期待=%s 実際=%s", testdata.DefaultTaskInputs[1].Title, got[1]["title"])
 	}
 }
 
@@ -177,6 +196,59 @@ func TestGetTasksById_NotFound(t *testing.T) {
 	r := setupTestRouter(t)
 
 	req := httptest.NewRequest(http.MethodGet, "/tasks/999", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("ステータスコードが不正です: 期待=404 実際=%d", w.Code)
+	}
+}
+
+func TestDeleteTaskById_Success(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db := setupTestDB(t)
+	repo := task.NewTaskRepository(db)
+	h := NewHandler(repo)
+
+	seed := task.NewTask("to be deleted", "todo")
+	if err := repo.Create(seed); err != nil {
+		t.Fatalf("テストデータ投入に失敗しました: %v", err)
+	}
+
+	r := gin.Default()
+	r.DELETE("/tasks/:id", h.DeleteTaskById)
+
+	url := "/tasks/" + strconv.Itoa(seed.ID)
+	req := httptest.NewRequest(http.MethodDelete, url, nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("ステータスコードが不正です: 期待=200 実際=%d", w.Code)
+	}
+
+	_, err := repo.GetTasksById(seed.ID)
+	if err == nil {
+		t.Fatalf("削除後にタスクが残っています")
+	}
+}
+
+func TestDeleteTaskById_InvalidID(t *testing.T) {
+	r := setupTestRouter(t)
+
+	req := httptest.NewRequest(http.MethodDelete, "/tasks/not-number", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("ステータスコードが不正です: 期待=400 実際=%d", w.Code)
+	}
+}
+
+func TestDeleteTaskById_NotFound(t *testing.T) {
+	r := setupTestRouter(t)
+
+	req := httptest.NewRequest(http.MethodDelete, "/tasks/999", nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 
