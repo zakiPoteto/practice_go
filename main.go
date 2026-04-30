@@ -32,6 +32,8 @@ func main() {
 	r.POST("/tasks", h.CreateTask)
 	r.GET("/tasks", h.GetAllTasks)
 	r.GET("/tasks/:id", h.GetTasksById)
+	r.DELETE("/tasks", h.DeleteAllTasks)
+	r.DELETE("/tasks/:id", h.DeleteTaskById)
 
 	r.Run(":8080")
 
