@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	model "todo-api/model"
 	testdata "todo-api/test"
 
 	"gorm.io/driver/sqlite"
@@ -20,7 +21,7 @@ func setupTestRepo(t *testing.T) *TaskRepository {
 		t.Fatalf("テストDBの接続に失敗しました: %v", err)
 	}
 
-	if err := db.AutoMigrate(&Task{}); err != nil {
+	if err := db.AutoMigrate(&model.Task{}); err != nil {
 		t.Fatalf("テストDBのマイグレーションに失敗しました: %v", err)
 	}
 

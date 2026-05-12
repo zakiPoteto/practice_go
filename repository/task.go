@@ -1,21 +1,17 @@
 package task
 
 import (
+	model "todo-api/model"
+
 	"gorm.io/gorm"
 )
-
-type Task struct {
-	ID     int    `json:"-"`
-	Title  string `json:"title" binding:"required"`
-	Status string `json:"status" binding:"required"`
-}
 
 type TaskRepository struct {
 	db *gorm.DB
 }
 
-func NewTask(title string, status string) *Task {
-	return &Task{
+func NewTask(title string, status string) *model.Task {
+	return &model.Task{
 
 		Title:  title,
 		Status: status,
@@ -23,7 +19,7 @@ func NewTask(title string, status string) *Task {
 }
 
 // 挿入
-func (r *TaskRepository) Create(task *Task) error {
+func (r *TaskRepository) Create(task *model.Task) error {
 	return r.db.Create(task).Error
 }
 func NewTaskRepository(db *gorm.DB) *TaskRepository {
@@ -31,13 +27,13 @@ func NewTaskRepository(db *gorm.DB) *TaskRepository {
 		db: db,
 	}
 }
-func (r *TaskRepository) GetAll() ([]Task, error) {
-	var tasks []Task
+func (r *TaskRepository) GetAll() ([]model.Task, error) {
+	var tasks []model.Task
 	err := r.db.Find(&tasks).Error
 	return tasks, err
 }
-func (r *TaskRepository) GetTasksById(id int) (Task, error) {
-	var tasks Task
+func (r *TaskRepository) GetTasksById(id int) (model.Task, error) {
+	var tasks model.Task
 	err := r.db.First(&tasks, "id = ?", id).Error
 	return tasks, err
 }
@@ -45,7 +41,7 @@ func (r *TaskRepository) DeleteAll() error {
 	return r.db.Exec("DELETE FROM tasks").Error
 }
 func (r *TaskRepository) DeleteById(id int) error {
-	result := r.db.Delete(&Task{}, id)
+	result := r.db.Delete(&model.Task{}, id)
 	if result.Error != nil {
 		return result.Error
 	}

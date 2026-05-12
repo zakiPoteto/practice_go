@@ -6,6 +6,7 @@ import (
 
 	// "practice_go/handler"
 	handler "todo-api/handler"
+	model "todo-api/model"
 	task "todo-api/repository"
 
 	"github.com/gin-gonic/gin"
@@ -24,7 +25,7 @@ func main() {
 		fmt.Println("failed to connect database:", err)
 		return
 	}
-	db.AutoMigrate(&task.Task{})
+	db.AutoMigrate(&model.Task{})
 
 	taskRepo := task.NewTaskRepository(db)
 	h := handler.NewHandler(taskRepo)

@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"testing"
+	model "todo-api/model"
 	task "todo-api/repository"
 	testdata "todo-api/test"
 
@@ -26,7 +27,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("テストDBの接続に失敗しました: %v", err)
 	}
 
-	if err := db.AutoMigrate(&task.Task{}); err != nil {
+	if err := db.AutoMigrate(&model.Task{}); err != nil {
 		t.Fatalf("テストDBのマイグレーションに失敗しました: %v", err)
 	}
 

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	model "todo-api/model"
 	task "todo-api/repository"
 
 	"github.com/gin-gonic/gin"
@@ -27,7 +28,7 @@ func NewHandler(repo *task.TaskRepository) *Handler {
 }
 func (h *Handler) CreateTask(c *gin.Context) {
 	// Implementation for creating a task
-	task := new(task.Task)
+	task := new(model.Task)
 	if err := c.Bind(task); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
