@@ -162,7 +162,7 @@ func TestGetTasksById_Success(t *testing.T) {
 	r := gin.Default()
 	r.GET("/tasks/:id", h.GetTasksById)
 
-	url := "/tasks/" + strconv.Itoa(seed.ID)
+	url := "/tasks/" + strconv.Itoa(int(seed.ID))
 	req := httptest.NewRequest(http.MethodGet, url, nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -219,7 +219,7 @@ func TestDeleteTaskById_Success(t *testing.T) {
 	r := gin.Default()
 	r.DELETE("/tasks/:id", h.DeleteTaskById)
 
-	url := "/tasks/" + strconv.Itoa(seed.ID)
+	url := "/tasks/" + strconv.Itoa(int(seed.ID))
 	req := httptest.NewRequest(http.MethodDelete, url, nil)
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
@@ -228,7 +228,7 @@ func TestDeleteTaskById_Success(t *testing.T) {
 		t.Fatalf("ステータスコードが不正です: 期待=200 実際=%d", w.Code)
 	}
 
-	_, err := repo.GetTasksById(seed.ID)
+	_, err := repo.GetTasksById(int(seed.ID))
 	if err == nil {
 		t.Fatalf("削除後にタスクが残っています")
 	}

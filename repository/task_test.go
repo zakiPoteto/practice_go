@@ -1,4 +1,4 @@
-package task
+package repository
 
 import (
 	"errors"
@@ -64,7 +64,7 @@ func TestTaskRepositoryGetTasksById(t *testing.T) {
 		t.Fatalf("タスク作成に失敗しました: %v", err)
 	}
 
-	got, err := repo.GetTasksById(created.ID)
+	got, err := repo.GetTasksById(int(created.ID))
 	if err != nil {
 		t.Fatalf("ID指定のタスク取得に失敗しました: %v", err)
 	}
@@ -96,11 +96,11 @@ func TestTaskRepositoryDeleteById_Success(t *testing.T) {
 		t.Fatalf("タスク作成に失敗しました: %v", err)
 	}
 
-	if err := repo.DeleteById(created.ID); err != nil {
+	if err := repo.DeleteById(int(created.ID)); err != nil {
 		t.Fatalf("タスク削除に失敗しました: %v", err)
 	}
 
-	_, err := repo.GetTasksById(created.ID)
+	_, err := repo.GetTasksById(int(created.ID))
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
 		t.Fatalf("削除後にタスクが残っています: 実際のエラー=%v", err)
 	}

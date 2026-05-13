@@ -1,4 +1,4 @@
-package task
+package repository
 
 import (
 	model "todo-api/model"
