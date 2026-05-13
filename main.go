@@ -7,7 +7,7 @@ import (
 	// "practice_go/handler"
 	handler "todo-api/handler"
 	model "todo-api/model"
-	task "todo-api/repository"
+	repo "todo-api/repository"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/sqlite" // Sqlite driver based on CGO
@@ -25,9 +25,11 @@ func main() {
 		fmt.Println("failed to connect database:", err)
 		return
 	}
-	db.AutoMigrate(&model.Task{})
+	db.AutoMigrate(&model.Task{}, &model.User{})
 
-	taskRepo := task.NewTaskRepository(db)
+	taskRepo := repo.NewTaskRepository(db)
+	userRepo := repo.NewUserRepository(db)
+	authHandler := handler.NewAuthHandler(userRepo)
 	h := handler.NewHandler(taskRepo)
 
 	r.POST("/tasks", h.CreateTask)
@@ -35,6 +37,9 @@ func main() {
 	r.GET("/tasks/:id", h.GetTasksById)
 	r.DELETE("/tasks", h.DeleteAllTasks)
 	r.DELETE("/tasks/:id", h.DeleteTaskById)
+
+	r.POST("/auth/register", authHandler.Register)
+	r.POST("/auth/login", authHandler.Login)
 
 	r.Run(":8080")
 
