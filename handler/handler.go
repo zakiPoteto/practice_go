@@ -39,7 +39,10 @@ func (h *Handler) CreateTask(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, task) // 成功時に201と作成されたユーザーを返す
+	c.JSON(http.StatusCreated, gin.H{
+		"title":  task.Title,
+		"status": task.Status,
+	}) // 成功時に201と作成されたユーザーを返す
 }
 func (h *Handler) GetAllTasks(c *gin.Context) {
 	tasks, err := h.taskRepo.GetAll()
@@ -47,7 +50,14 @@ func (h *Handler) GetAllTasks(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, tasks)
+	var response []gin.H
+	for _, task := range tasks {
+		response = append(response, gin.H{
+			"title":  task.Title,
+			"status": task.Status,
+		})
+	}
+	c.JSON(http.StatusOK, response)
 }
 func (h *Handler) GetTasksById(c *gin.Context) {
 	id := c.Param("id")
@@ -65,7 +75,10 @@ func (h *Handler) GetTasksById(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, foundTask)
+	c.JSON(http.StatusOK, gin.H{
+		"title":  foundTask.Title,
+		"status": foundTask.Status,
+	})
 }
 func (h *Handler) DeleteAllTasks(c *gin.Context) {
 	if err := h.taskRepo.DeleteAll(); err != nil {
