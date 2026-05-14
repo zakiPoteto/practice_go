@@ -32,14 +32,17 @@ func main() {
 	authHandler := handler.NewAuthHandler(userRepo)
 	h := handler.NewHandler(taskRepo)
 
-	r.POST("/tasks", h.CreateTask)
-	r.GET("/tasks", h.GetAllTasks)
-	r.GET("/tasks/:id", h.GetTasksById)
-	r.DELETE("/tasks", h.DeleteAllTasks)
-	r.DELETE("/tasks/:id", h.DeleteTaskById)
-
 	r.POST("/auth/register", authHandler.Register)
 	r.POST("/auth/login", authHandler.Login)
+
+	tasks := r.Group("/tasks", handler.AthMiddleware())
+	{
+		tasks.POST("", h.CreateTask)
+		tasks.GET("", h.GetAllTasks)
+		tasks.GET("/:id", h.GetTasksById)
+		tasks.DELETE("", h.DeleteAllTasks)
+		tasks.DELETE("/:id", h.DeleteTaskById)
+	}
 
 	r.Run(":8080")
 
