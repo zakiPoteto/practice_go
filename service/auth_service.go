@@ -17,6 +17,11 @@ type AuthService struct {
 	repo UserRepository
 }
 
+func NewAuthService(repo UserRepository) *AuthService {
+	return &AuthService{
+		repo: repo,
+	}
+}
 func (s *AuthService) Register(user *model.User) error {
 	hashed, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
