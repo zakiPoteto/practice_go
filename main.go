@@ -8,6 +8,7 @@ import (
 	handler "todo-api/handler"
 	model "todo-api/model"
 	repo "todo-api/repository"
+	"todo-api/service"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/sqlite" // Sqlite driver based on CGO
@@ -29,8 +30,10 @@ func main() {
 
 	taskRepo := repo.NewTaskRepository(db)
 	userRepo := repo.NewUserRepository(db)
-	authHandler := handler.NewAuthHandler(userRepo)
-	h := handler.NewHandler(taskRepo)
+	taskService := service.NewTaskService(taskRepo)
+	authService := service.NewAuthService(userRepo)
+	authHandler := handler.NewAuthHandler(authService)
+	h := handler.NewHandler(taskService)
 
 	r.POST("/auth/register", authHandler.Register)
 	r.POST("/auth/login", authHandler.Login)
@@ -40,6 +43,7 @@ func main() {
 		tasks.POST("", h.CreateTask)
 		tasks.GET("", h.GetAllTasks)
 		tasks.GET("/:id", h.GetTasksById)
+		tasks.PUT("/:id", h.UpdateTask)
 		tasks.DELETE("", h.DeleteAllTasks)
 		tasks.DELETE("/:id", h.DeleteTaskById)
 	}
