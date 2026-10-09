@@ -22,25 +22,29 @@ func NewTask(title string, status string) *model.Task {
 func (r *TaskRepository) Create(task *model.Task) error {
 	return r.db.Create(task).Error
 }
+func (r *TaskRepository) GetAllByUser(userID uint) ([]model.Task, error) {
+	var tasks []model.Task
+	err := r.db.Where("user_id=?", userID).Find(&tasks).Error
+	return tasks, err
+}
+func (r *TaskRepository) GetByID(id int) (model.Task, error) {
+	var task model.Task
+	err := r.db.First(&task, "id = ?", id).Error
+	return task, err
+}
+func (r *TaskRepository) Update(task *model.Task) error {
+	return r.db.Save(task).Error
+}
+func (r *TaskRepository) DeleteAllByUser(userID uint) error {
+	return r.db.Where("user_id=?", userID).Delete(&model.Task{}).Error
+}
+
 func NewTaskRepository(db *gorm.DB) *TaskRepository {
 	return &TaskRepository{
 		db: db,
 	}
 }
-func (r *TaskRepository) GetAll() ([]model.Task, error) {
-	var tasks []model.Task
-	err := r.db.Find(&tasks).Error
-	return tasks, err
-}
-func (r *TaskRepository) GetTasksById(id int) (model.Task, error) {
-	var tasks model.Task
-	err := r.db.First(&tasks, "id = ?", id).Error
-	return tasks, err
-}
-func (r *TaskRepository) DeleteAll() error {
-	return r.db.Exec("DELETE FROM tasks").Error
-}
-func (r *TaskRepository) DeleteById(id int) error {
+func (r *TaskRepository) DeleteByID(id int) error {
 	result := r.db.Delete(&model.Task{}, id)
 	if result.Error != nil {
 		return result.Error
