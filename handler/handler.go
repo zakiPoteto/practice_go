@@ -5,101 +5,131 @@ import (
 	"net/http"
 	"strconv"
 	model "todo-api/model"
-	task "todo-api/repository"
+	"todo-api/service"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
 
-//	type tmp struct {
-//		ID     int    `json:"-"`
-//		Title  string `json:"title" binding:"required"`
-//		Status string `json:"status" binding:"required"`
-//	}
 type Handler struct {
-	taskRepo *task.TaskRepository
+	taskService *service.TaskService
 }
 
-func NewHandler(repo *task.TaskRepository) *Handler {
-
+func NewHandler(s *service.TaskService) *Handler {
 	return &Handler{
-		taskRepo: repo,
+		taskService: s,
 	}
 }
+
+// Service が返すエラーを HTTP ステータスに変換する
+func respondServiceError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, service.ErrTaskNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"error": "task not found"})
+	case errors.Is(err, service.ErrForbidden):
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	}
+}
+
+func taskResponse(t model.Task) gin.H {
+	return gin.H{
+		"id":     t.ID,
+		"title":  t.Title,
+		"status": t.Status,
+	}
+}
+
 func (h *Handler) CreateTask(c *gin.Context) {
-	// Implementation for creating a task
+	userID := c.MustGet("userID").(uint)
+
 	task := new(model.Task)
-	if err := c.Bind(task); err != nil {
+	if err := c.ShouldBindJSON(task); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	// リクエストボディの user_id は信用せず、トークン由来の値で上書きする
+	task.UserID = userID
 
-	if err := h.taskRepo.Create(task); err != nil { // データベースにユーザーを作成
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()}) // 作成エラー時に500を返す
+	if err := h.taskService.CreateTask(task); err != nil {
+		respondServiceError(c, err)
 		return
 	}
-
-	c.JSON(http.StatusCreated, gin.H{
-		"title":  task.Title,
-		"status": task.Status,
-	}) // 成功時に201と作成されたユーザーを返す
+	c.JSON(http.StatusCreated, taskResponse(*task))
 }
+
 func (h *Handler) GetAllTasks(c *gin.Context) {
-	tasks, err := h.taskRepo.GetAll()
+	userID := c.MustGet("userID").(uint)
+
+	tasks, err := h.taskService.GetAllTasks(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondServiceError(c, err)
 		return
 	}
-	var response []gin.H
-	for _, task := range tasks {
-		response = append(response, gin.H{
-			"title":  task.Title,
-			"status": task.Status,
-		})
+	response := make([]gin.H, 0, len(tasks))
+	for _, t := range tasks {
+		response = append(response, taskResponse(t))
 	}
 	c.JSON(http.StatusOK, response)
 }
+
 func (h *Handler) GetTasksById(c *gin.Context) {
-	id := c.Param("id")
-	idInt, err := strconv.Atoi(id)
+	userID := c.MustGet("userID").(uint)
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format"})
 		return
 	}
-	foundTask, err := h.taskRepo.GetTasksById(idInt)
+	task, err := h.taskService.GetTaskByID(id, userID)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "task not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		respondServiceError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{
-		"title":  foundTask.Title,
-		"status": foundTask.Status,
-	})
+	c.JSON(http.StatusOK, taskResponse(task))
 }
+
+func (h *Handler) UpdateTask(c *gin.Context) {
+	userID := c.MustGet("userID").(uint)
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format"})
+		return
+	}
+	var input struct {
+		Title  string `json:"title" binding:"required"`
+		Status string `json:"status" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	task, err := h.taskService.UpdateTask(id, userID, input.Title, input.Status)
+	if err != nil {
+		respondServiceError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, taskResponse(task))
+}
+
 func (h *Handler) DeleteAllTasks(c *gin.Context) {
-	if err := h.taskRepo.DeleteAll(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	userID := c.MustGet("userID").(uint)
+
+	if err := h.taskService.DeleteAllTasks(userID); err != nil {
+		respondServiceError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "all tasks deleted"})
 }
+
 func (h *Handler) DeleteTaskById(c *gin.Context) {
-	id := c.Param("id")
-	idInt, err := strconv.Atoi(id)
+	userID := c.MustGet("userID").(uint)
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id format"})
 		return
 	}
-	if err := h.taskRepo.DeleteById(idInt); err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "task not found"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if err := h.taskService.DeleteTask(id, userID); err != nil {
+		respondServiceError(c, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "task deleted"})
