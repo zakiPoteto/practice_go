@@ -20,11 +20,18 @@ func NewAuthHandler(s *service.AuthService) *AuthHandler {
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
-	user := new(model.User)
-	if err := c.Bind(user); err != nil {
+	// model.User の Password は json:"-"（レスポンスに出さないため）で、リクエストの読み込みにも使えない。
+	// そのため、入力用の構造体を別に用意する。
+	var input struct {
+		Name     string `json:"name" binding:"required"`
+		Email    string `json:"email" binding:"required"`
+		Password string `json:"password" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	user := &model.User{Name: input.Name, Email: input.Email, Password: input.Password}
 	if err := h.authService.Register(user); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create user"})
 		return
