@@ -1,8 +1,10 @@
 package main
 
 import (
-	"fmt"
+	"errors"
+	"log"
 	"net/http"
+	"os"
 
 	// "practice_go/handler"
 	handler "todo-api/handler"
@@ -11,22 +13,46 @@ import (
 	"todo-api/service"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/driver/sqlite" // Sqlite driver based on CGO
+	"github.com/joho/godotenv"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
+// 必須の環境変数を取得する。未設定なら起動を中止する。
+func mustEnv(key string) string {
+	v := os.Getenv(key)
+	if v == "" {
+		log.Fatalf("環境変数 %s が設定されていません", key)
+	}
+	return v
+}
+
 func main() {
+	// ローカル開発用。.env が無いのは許容する（本番は環境変数を直接渡す）。
+	// ただし存在するのに読み込めない（書式エラーなど）場合は、原因を隠さず終了する。
+	if err := godotenv.Load(); err != nil && !errors.Is(err, os.ErrNotExist) {
+		log.Fatalf(".env の読み込みに失敗しました: %v", err)
+	}
+
+	dsn := mustEnv("DATABASE_URL")
+	mustEnv("JWT_SECRET") // 空のまま署名・検証されるのを防ぐため、起動時に存在確認する
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
 	r := gin.Default()
 	r.GET("/hello", func(c *gin.Context) {
 		c.String(http.StatusOK, "Hello, World!")
 	})
 
-	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		fmt.Println("failed to connect database:", err)
-		return
+		log.Fatalf("failed to connect database: %v", err)
 	}
-	db.AutoMigrate(&model.Task{}, &model.User{})
+	if err := db.AutoMigrate(&model.Task{}, &model.User{}); err != nil {
+		log.Fatalf("failed to migrate database: %v", err)
+	}
 
 	taskRepo := repo.NewTaskRepository(db)
 	userRepo := repo.NewUserRepository(db)
@@ -48,6 +74,7 @@ func main() {
 		tasks.DELETE("/:id", h.DeleteTaskById)
 	}
 
-	r.Run(":8080")
-
+	if err := r.Run(":" + port); err != nil {
+		log.Fatalf("failed to start server: %v", err)
+	}
 }
