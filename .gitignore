@@ -1,3 +1,4 @@
 .claude
 dev-log
 test.db
+.env
